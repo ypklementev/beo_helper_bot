@@ -16,9 +16,9 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh -o StrictHostKeyChecking=no ypklementev@95.165.175.159 "
-            cd /var/www/beo-helper-bot &&
+            cd /var/www/beo_helper_bot &&
             git pull origin main &&
-            /var/www/beo-helper-bot/venv/bin/pip install -r requirements.txt &&
-            sudo systemctl restart beo-helper-bot &&
+            /var/www/beo_helper_bot/venv/bin/pip install -r requirements.txt &&
+            sudo systemctl restart beo_helper_bot &&
             sudo systemctl restart beo-helper-webapp
           "
