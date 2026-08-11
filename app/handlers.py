@@ -1,6 +1,8 @@
 from aiogram import F, Router
 from .db import cancel_order
 from aiogram.filters import CommandStart
+from aiogram.exceptions import TelegramBadRequest
+from .db import cancel_order, get_order
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -9,7 +11,7 @@ from aiogram.types import (
     WebAppInfo,
 )
 
-from .config import WEBAPP_URL
+from .config import ADMIN_CHAT_ID, WEBAPP_URL
 
 router = Router()
 
@@ -68,6 +70,29 @@ async def cancel_order_handler(callback: CallbackQuery) -> None:
 
     order_id = int(callback.data.split(":")[1])
 
+    order = await get_order(order_id)
+
+    if not order:
+        await callback.answer(
+            "Заявка не найдена.",
+            show_alert=True,
+        )
+        return
+
+    if order["tg_user_id"] != callback.from_user.id:
+        await callback.answer(
+            "Эта заявка принадлежит другому пользователю.",
+            show_alert=True,
+        )
+        return
+
+    if order["status"] != "new":
+        await callback.answer(
+            "Эту заявку уже нельзя отменить.",
+            show_alert=True,
+        )
+        return
+
     cancelled = await cancel_order(
         order_id=order_id,
         tg_user_id=callback.from_user.id,
@@ -75,14 +100,38 @@ async def cancel_order_handler(callback: CallbackQuery) -> None:
 
     if not cancelled:
         await callback.answer(
-            "Заявка уже отменена или не принадлежит вам.",
+            "Не удалось отменить заявку.",
             show_alert=True,
         )
         return
 
+    # Уведомляем пользователя
     await callback.message.edit_text(
         f"❌ <b>Заявка #{order_id} отменена.</b>\n\n"
-        "Если вам снова понадобится помощь, просто оформите новую заявку."
+        "Заявка больше не будет обрабатываться.",
     )
 
     await callback.answer("Заявка отменена")
+
+    # Редактируем сообщение в чате администратора
+    if order["admin_message_id"]:
+        try:
+            await callback.bot.edit_message_text(
+                chat_id=ADMIN_CHAT_ID,
+                message_id=order["admin_message_id"],
+                text=(
+                    f"❌ <b>Заявка #{order_id} ОТМЕНЕНА</b>\n\n"
+                    f"👤 {order['full_name'] or '—'} "
+                    f"(@{order['tg_username'] or '—'})\n"
+                    f"📂 {order['category']}"
+                    + (
+                        f" / {order['subcategory']}"
+                        if order["subcategory"]
+                        else ""
+                    )
+                    + f"\n📝 {order['description']}"
+                ),
+                parse_mode="HTML",
+            )
+        except TelegramBadRequest:
+            pass

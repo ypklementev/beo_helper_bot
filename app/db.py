@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS orders (
     address TEXT,
     format TEXT,
     status TEXT NOT NULL DEFAULT 'new',
+    admin_message_id INTEGER,
     created_at TEXT NOT NULL
 );
 """
@@ -64,6 +65,20 @@ async def get_orders(limit: int = 50) -> list[dict]:
         return [dict(row) for row in rows]
 
 
+async def get_order(order_id: int) -> dict | None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+
+        cursor = await db.execute(
+            "SELECT * FROM orders WHERE id = ?",
+            (order_id,),
+        )
+
+        row = await cursor.fetchone()
+
+        return dict(row) if row else None
+
+
 async def update_status(order_id: int, status: str) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE orders SET status = ? WHERE id = ?", (status, order_id))
@@ -84,4 +99,16 @@ async def cancel_order(order_id: int, tg_user_id: int) -> bool:
         )
         await db.commit()
         return cursor.rowcount > 0
-    
+
+
+async def set_admin_message_id(order_id: int, message_id: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            UPDATE orders
+            SET admin_message_id = ?
+            WHERE id = ?
+            """,
+            (message_id, order_id),
+        )
+        await db.commit()

@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .config import ADMIN_CHAT_ID, BOT_TOKEN, PROXY_URL
 from .db import init_db, save_order
 from .telegram_auth import validate_init_data
+from .db import init_db, save_order, set_admin_message_id
 
 app = FastAPI(title="IT Services Order API")
 
@@ -82,10 +83,15 @@ async def create_order(payload: OrderPayload) -> dict:
     if order["format"]:
         lines.append(f"🔧 Формат: {order['format']}")
 
-    if ADMIN_CHAT_ID:
-        await notify_bot.send_message(ADMIN_CHAT_ID, "\n".join(lines), parse_mode="HTML")
-        user_id = order["tg_user_id"]
+    admin_message = None
 
+    if ADMIN_CHAT_ID:
+        admin_message = await notify_bot.send_message(ADMIN_CHAT_ID, "\n".join(lines), parse_mode="HTML")
+        await set_admin_message_id(
+            order_id,
+            admin_message.message_id,
+        )
+    user_id = order["tg_user_id"]
     if user_id:
         user_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
@@ -101,7 +107,7 @@ async def create_order(payload: OrderPayload) -> dict:
         await notify_bot.send_message(
             user_id,
             (
-                f"✅ <b>Заявка #{order_id} отправлена!</b>\n\n"
+                f"✅ Заявка отправлена!\n\n"
                 "Мы получили вашу заявку и скоро свяжемся с вами.\n\n"
                 "Если вы передумали, заявку можно отменить кнопкой ниже."
             ),
