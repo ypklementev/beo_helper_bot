@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.client.session.aiohttp import AiohttpSession
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -46,7 +47,8 @@ async def index() -> FileResponse:
 async def create_order(payload: OrderPayload) -> dict:
     parsed = validate_init_data(payload.init_data)
     if parsed is None:
-        raise HTTPException(status_code=401, detail="Invalid Telegram init data")
+        raise HTTPException(
+            status_code=401, detail="Invalid Telegram init data")
 
     if not payload.description.strip():
         raise HTTPException(status_code=422, detail="Description is required")
@@ -82,5 +84,28 @@ async def create_order(payload: OrderPayload) -> dict:
 
     if ADMIN_CHAT_ID:
         await notify_bot.send_message(ADMIN_CHAT_ID, "\n".join(lines), parse_mode="HTML")
+        user_id = order["tg_user_id"]
+
+    if user_id:
+        user_keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="❌ Отменить заявку",
+                        callback_data=f"cancel_order:{order_id}",
+                    )
+                ]
+            ]
+        )
+
+        await notify_bot.send_message(
+            user_id,
+            (
+                f"✅ <b>Заявка #{order_id} отправлена!</b>\n\n"
+                "Мы получили вашу заявку и скоро свяжемся с вами.\n\n"
+                "Если вы передумали, заявку можно отменить кнопкой ниже."
+            ),
+            reply_markup=user_keyboard,
+        )
 
     return {"ok": True, "order_id": order_id}
