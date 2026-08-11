@@ -8,6 +8,7 @@ from aiogram.client.session.aiohttp import AiohttpSession
 
 from .config import BOT_TOKEN, PROXY_URL
 from .handlers import router
+from .admin_handlers import router as admin_router
 
 
 async def main() -> None:
@@ -15,6 +16,7 @@ async def main() -> None:
     session = AiohttpSession(proxy=PROXY_URL) if PROXY_URL else None
     bot = Bot(token=BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
+    dp.include_router(admin_router)
     dp.include_router(router)
 
     await bot.delete_webhook(drop_pending_updates=True)
