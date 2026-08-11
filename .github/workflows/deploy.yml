@@ -1,0 +1,24 @@
+name: Deploy to Server
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Add SSH Key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ypklementev@95.165.175.159 "
+            cd /var/www/beo-helper-bot &&
+            git pull origin main &&
+            /var/www/beo-helper-bot/venv/bin/pip install -r requirements.txt &&
+            sudo systemctl restart beo-helper-bot &&
+            sudo systemctl restart beo-helper-webapp
+          "
