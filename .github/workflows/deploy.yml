@@ -19,6 +19,6 @@ jobs:
             cd /var/www/beo_helper_bot &&
             git pull origin main &&
             /var/www/beo_helper_bot/venv/bin/pip install -r requirements.txt &&
-            sudo systemctl restart beo_helper_bot &&
-            sudo systemctl restart beo-helper-webapp
+            sudo systemctl restart order-webapp &&
+            sudo systemctl restart order-bot
           "
