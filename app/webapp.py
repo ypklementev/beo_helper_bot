@@ -1,12 +1,13 @@
 from pathlib import Path
 
 from aiogram import Bot
+from aiogram.client.session.aiohttp import AiohttpSession
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
-from .config import ADMIN_CHAT_ID, BOT_TOKEN
+from .config import ADMIN_CHAT_ID, BOT_TOKEN, PROXY_URL
 from .db import init_db, save_order
 from .telegram_auth import validate_init_data
 
@@ -15,7 +16,8 @@ app = FastAPI(title="IT Services Order API")
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-notify_bot = Bot(token=BOT_TOKEN)
+_session = AiohttpSession(proxy=PROXY_URL) if PROXY_URL else None
+notify_bot = Bot(token=BOT_TOKEN, session=_session)
 
 
 class OrderPayload(BaseModel):
